@@ -209,7 +209,7 @@ def generate_sunburst(filename, attribute, hist):
             
 if __name__ == '__main__':
     # Read pickled log data.
-    logdata_output_filename = '/cbio/jclab/projects/fah/output/logs.pkl'
+    logdata_output_filename = 'logs.pkl'
     import cPickle
     logdata_outfile = open(logdata_output_filename, 'r')
     logs = cPickle.load(logdata_outfile)
@@ -219,19 +219,59 @@ if __name__ == '__main__':
     for attribute in attributes:
         hist = histogram(logs, attribute)
 
+        # Convert to percentages.
+        total = 0
+        for key in hist:
+            total += hist[key]
+        for key in hist:
+            hist[key] = (hist[key]) / float(total) * 100.0
+
         print attribute
         print '-' * (48+1+8)
-        for key in hist:
-            print "%-48s %8d" % (key, hist[key])
-        print ""
         
+        sorted_keys = sorted(hist, key=hist.get, reverse=True)
+
+        for key in sorted_keys:
+            print "%-48s %6.3f %%" % (key, hist[key])
+        print ""
+
+    # Analyze number of GPUs.
+    import numpy
+    max_gpus = 12
+    gpu_count = numpy.zeros([max_gpus+2], numpy.int32)
+    for ngpus in range(max_gpus):
+        hist = histogram(logs, 'GPU %d' % ngpus)
+        for key in hist:
+            gpu_count[ngpus+1] += hist[key]    
+    for ngpus in range(1,max_gpus+1):    
+        gpu_count[ngpus] = gpu_count[ngpus] - gpu_count[ngpus+1]
+    total_gpus = 0
+    for ngpus in range(1,max_gpus+1):    
+        total_gpus += gpu_count[ngpus]
+    print "Number of GPUs"
+    print '-' * (48+1+8)
+    for ngpus in range(1,max_gpus+1):
+        print "%-48s %6.3f %%" % (ngpus, 100.0 * gpu_count[ngpus] / total_gpus)
+    #print '-' * (48+1+8)
+    #print "%-48s %8d" % ("TOTAL", total_gpus)
+    print ""
+
     # Pool GPU stats.
     hist = gpu_histogram(logs)
 
+    # Convert to percentages.
+    total = 0
+    for key in hist:
+        total += hist[key]
+    for key in hist:
+        hist[key] = (hist[key]) / float(total) * 100.0
+
     print "GPUs (aggregated)"
     print '-' * (48+1+8)
-    for key in hist:
-        print "%-48s %8d" % (key, hist[key])
+    sorted_keys = sorted(hist, key=hist.get, reverse=True)
+
+    for key in sorted_keys:
+        print "%-48s %6.3f %%" % (key, hist[key])
     print ""
 
     #import os.path
