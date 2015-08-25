@@ -470,7 +470,7 @@ Saving result file log.txt
 if __name__ == '__main__':
     # Name of project directory to check.
     import os, os.path
-    base_directory = '/cbio/jclab/projects/fah'
+    base_directory = '/cbio/jclab/projects/fah/attic/'
     project_directory = os.path.join(base_directory, 'PROJ8900')
     check_results = False
     write_trajectories = False
