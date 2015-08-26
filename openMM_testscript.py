@@ -142,8 +142,7 @@ import sys
 import math
 import glob
 
-import simtk.unit as units
-import simtk.openmm as openmm
+from simtk import unit, openmm
 
 from openmmtools import testsystems
 from simtk.openmm import XmlSerializer
@@ -153,8 +152,8 @@ from simtk.openmm import XmlSerializer
 #=============================================================================================
 
 # These settings control what tolerance is allowed between platforms and the Reference platform.
-ENERGY_TOLERANCE = 0.06*units.kilocalories_per_mole # energy difference tolerance
-FORCE_RMSE_TOLERANCE = 0.06*units.kilocalories_per_mole/units.angstrom # per-particle force root-mean-square error tolerance
+ENERGY_TOLERANCE = 0.06*unit.kilocalories_per_mole # energy difference tolerance
+FORCE_RMSE_TOLERANCE = 0.06*unit.kilocalories_per_mole/unit.angstrom # per-particle force root-mean-square error tolerance
 
 def assert_approximately_equal(computed_potential, expected_potential, tolerance=ENERGY_TOLERANCE):
     """
@@ -162,16 +161,16 @@ def assert_approximately_equal(computed_potential, expected_potential, tolerance
 
     ARGUMENTS
 
-    computed_potential (simtk.unit.Quantity in units of energy) - computed potential energy
-    expected_potential (simtk.unit.Quantity in units of energy) - expected
+    computed_potential (simtk.unit.Quantity in unit of energy) - computed potential energy
+    expected_potential (simtk.unit.Quantity in unit of energy) - expected
 
     OPTIONAL ARGUMENTS
 
-    tolerance (simtk.unit.Quantity in units of energy) - acceptable tolerance
+    tolerance (simtk.unit.Quantity in unit of energy) - acceptable tolerance
 
     EXAMPLES
 
-    >>> assert_approximately_equal(0.0000 * units.kilocalories_per_mole, 0.0001 * units.kilocalories_per_mole, tolerance=0.06*units.kilocalories_per_mole)
+    >>> assert_approximately_equal(0.0000 * unit.kilocalories_per_mole, 0.0001 * unit.kilocalories_per_mole, tolerance=0.06*unit.kilocalories_per_mole)
 
     """
 
@@ -191,23 +190,23 @@ def compute_potential_and_force(system, positions, platform):
     ARGUMENTS
 
     system (simtk.openmm.System) - the system for which the energy is to be computed
-    positions (simtk.unit.Quantity of Nx3 numpy.array in units of distance) - positions for which energy and force are to be computed
+    positions (simtk.unit.Quantity of Nx3 numpy.array in unit of distance) - positions for which energy and force are to be computed
     platform (simtk.openmm.Platform) - platform object to be used to compute the energy and force
 
     RETURNS
 
     potential (simtk.unit.Quantity in energy/mole) - the potential
-    force (simtk.unit.Quantity of Nx3 numpy.array in units of energy/mole/distance) - the force
+    force (simtk.unit.Quantity of Nx3 numpy.array in unit of energy/mole/distance) - the force
 
     """
 
     # Create a Context.
-    kB = units.BOLTZMANN_CONSTANT_kB
-    temperature = 298.0 * units.kelvin
+    kB = unit.BOLTZMANN_CONSTANT_kB
+    temperature = 298.0 * unit.kelvin
     kT = kB * temperature
     beta = 1.0 / kT
-    collision_rate = 90.0 / units.picosecond
-    timestep = 1.0 * units.femtosecond
+    collision_rate = 90.0 / unit.picosecond
+    timestep = 1.0 * unit.femtosecond
     integrator = openmm.LangevinIntegrator(temperature, collision_rate, timestep)
     context = openmm.Context(system, integrator, platform)
     # Set positions
@@ -226,14 +225,14 @@ def compute_potential_and_force_by_force_index(system, positions, platform, forc
     ARGUMENTS
 
     system (simtk.openmm.System) - the system for which the energy is to be computed
-    positions (simtk.unit.Quantity of Nx3 numpy.array in units of distance) - positions for which energy and force are to be computed
+    positions (simtk.unit.Quantity of Nx3 numpy.array in unit of distance) - positions for which energy and force are to be computed
     platform (simtk.openmm.Platform) - platform object to be used to compute the energy and force
     force_index (int) - index of force to be computed (all others ignored)
 
     RETURNS
 
     potential (simtk.unit.Quantity in energy/mole) - the potential
-    force (simtk.unit.Quantity of Nx3 numpy.array in units of energy/mole/distance) - the force
+    force (simtk.unit.Quantity of Nx3 numpy.array in unit of energy/mole/distance) - the force
 
     """
 
@@ -248,12 +247,12 @@ def compute_potential_and_force_by_force_index(system, positions, platform, forc
     forces[force_index].setForceGroup(0) # bitmask of 1 should select only desired force
 
     # Create a Context.
-    kB = units.BOLTZMANN_CONSTANT_kB
-    temperature = 298.0 * units.kelvin
+    kB = unit.BOLTZMANN_CONSTANT_kB
+    temperature = 298.0 * unit.kelvin
     kT = kB * temperature
     beta = 1.0 / kT
-    collision_rate = 90.0 / units.picosecond
-    timestep = 1.0 * units.femtosecond
+    collision_rate = 90.0 / unit.picosecond
+    timestep = 1.0 * unit.femtosecond
     integrator = openmm.LangevinIntegrator(temperature, collision_rate, timestep)
     context = openmm.Context(system, integrator, platform)
     # Set positions
@@ -276,26 +275,26 @@ def compute_potential_and_force_by_force_group(system, positions, platform, forc
     ARGUMENTS
 
     system (simtk.openmm.System) - the system for which the energy is to be computed
-    positions (simtk.unit.Quantity of Nx3 numpy.array in units of distance) - positions for which energy and force are to be computed
+    positions (simtk.unit.Quantity of Nx3 numpy.array in unit of distance) - positions for which energy and force are to be computed
     platform (simtk.openmm.Platform) - platform object to be used to compute the energy and force
     force_group (int) - index of force group to be computed (all others ignored)
 
     RETURNS
 
     potential (simtk.unit.Quantity in energy/mole) - the potential
-    force (simtk.unit.Quantity of Nx3 numpy.array in units of energy/mole/distance) - the force
+    force (simtk.unit.Quantity of Nx3 numpy.array in unit of energy/mole/distance) - the force
 
     """
 
     forces = [ system.getForce(index) for index in range(system.getNumForces()) ]
 
     # Create a Context.
-    kB = units.BOLTZMANN_CONSTANT_kB
-    temperature = 298.0 * units.kelvin
+    kB = unit.BOLTZMANN_CONSTANT_kB
+    temperature = 298.0 * unit.kelvin
     kT = kB * temperature
     beta = 1.0 / kT
-    collision_rate = 90.0 / units.picosecond
-    timestep = 1.0 * units.femtosecond
+    collision_rate = 90.0 / unit.picosecond
+    timestep = 1.0 * unit.femtosecond
     integrator = openmm.LangevinIntegrator(temperature, collision_rate, timestep)
     context = openmm.Context(system, integrator, platform)
     # Set positions
@@ -357,7 +356,9 @@ def main():
     parser = argparse.ArgumentParser(description="Check OpenMM computed energies and forces across all platforms for a suite of test systems.")
     parser.add_argument('-o', '--outfile', dest='logfile', action='store', type=str, default=None)
     parser.add_argument('-v', dest='verbose', action='store_true')
-    parser.add_argument('-i', dest="input_data_path", action="store", type=str)
+    parser.add_argument('-i', '--input', dest="input_data_path", action="store", type=str)
+    parser.add_argument('-t', '--tuneplatform', dest="tune_pme_platform", action="store", type=str, default=None)
+    parser.add_argument('-p', '--precision', dest="precision", action="store", type=str, default='single')
     args = parser.parse_args()
 
     verbose = args.verbose # Don't display extra debug information.
@@ -387,11 +388,32 @@ def main():
     reference_platform = openmm.Platform.getPlatformByName("Reference")
     n_runs=get_num_runs(args.input_data_path)
     for run in range(n_runs):
-        test_state=XmlSerializer.deserialize(read_file(os.path.join(args.input_data_path,"RUN%d" % run, "state0.xml")))
-        test_system=XmlSerializer.deserialize(read_file(os.path.join(args.input_data_path,"RUN%d" % run, "system.xml")))
+        state = XmlSerializer.deserialize(read_file(os.path.join(args.input_data_path,"RUN%d" % run, "state0.xml")))
+        integrator = XmlSerializer.deserialize(read_file(os.path.join(args.input_data_path,"RUN%d" % run, "integrator.xml")))
+        system = XmlSerializer.deserialize(read_file(os.path.join(args.input_data_path,"RUN%d" % run, "system.xml")))
         
         # Create test system instance.
-        [system, positions] = [test_system, test_state.getPositions()]
+        positions = state.getPositions()
+
+        # Get PME parameters
+        forces = [ system.getForce(force_index) for force_index in range(system.getNumForces()) ]
+        force_dict = { force.__class__.__name__ : force for force in forces }
+        print("PME parameters:")
+        print(force_dict['NonbondedForce'].getPMEParameters())
+
+        if args.tune_pme_platform:
+            # Tune PME parameters for specified platform.
+            from optimizepme import optimizePME
+            properties = dict()
+            platform = openmm.Platform.getPlatformByName(args.tune_pme_platform)
+            print("Tuning PME parameters for platform '%s' precision model '%s'..." % (platform.getName(), args.precision))
+            if (platform.getName() == 'OpenCL'):
+                properties['OpenCLPrecision'] = args.precision
+            elif (platform.getName() == 'CUDA'):
+                properties['CudaPrecision'] = args.precision
+            minCutoff = 0.8 * unit.angstrom
+            maxCutoff = 1.2 * unit.angstrom
+            optimizePME(system, integrator, positions, platform, properties, minCutoff, maxCutoff)
 
         class_name = 'RUN%d' % run
         logger.info("%s (%d atoms)" % (class_name, system.getNumParticles()))
@@ -428,20 +450,20 @@ def main():
                     potential_error = platform_potential - reference_potential
 
                     # Compute per-atom RMS (magnitude) and RMS error in force.
-                    force_unit = units.kilocalories_per_mole / units.nanometers
+                    force_unit = unit.kilocalories_per_mole / unit.nanometers
                     natoms = system.getNumParticles()
                     force_mse = (((reference_force - platform_force) / force_unit)**2).sum() / natoms * force_unit**2
-                    force_rmse = units.sqrt(force_mse)
+                    force_rmse = unit.sqrt(force_mse)
 
                     force_ms = ((platform_force / force_unit)**2).sum() / natoms * force_unit**2
-                    force_rms = units.sqrt(force_ms)
+                    force_rms = unit.sqrt(force_ms)
 
-                    logger.info("%16s%16s %16.6f kcal/mol %16.6f kcal/mol %16.6f kcal/mol/nm %16.6f kcal/mol/nm" % (platform_name, precision_model, platform_potential / units.kilocalories_per_mole, potential_error / units.kilocalories_per_mole, force_rms / force_unit, force_rmse / force_unit))
+                    logger.info("%16s%16s %16.6f kcal/mol %16.6f kcal/mol %16.6f kcal/mol/nm %16.6f kcal/mol/nm" % (platform_name, precision_model, platform_potential / unit.kilocalories_per_mole, potential_error / unit.kilocalories_per_mole, force_rms / force_unit, force_rmse / force_unit))
 
                     # Mark whether tolerance is exceeded or not.
                     if abs(potential_error) > ENERGY_TOLERANCE:
                         test_success = False
-                        logger.info("%32s WARNING: Potential energy error (%.6f kcal/mol) exceeds tolerance (%.6f kcal/mol).  Test failed." % ("", potential_error/units.kilocalories_per_mole, ENERGY_TOLERANCE/units.kilocalories_per_mole))
+                        logger.info("%32s WARNING: Potential energy error (%.6f kcal/mol) exceeds tolerance (%.6f kcal/mol).  Test failed." % ("", potential_error/unit.kilocalories_per_mole, ENERGY_TOLERANCE/unit.kilocalories_per_mole))
                     if abs(force_rmse) > FORCE_RMSE_TOLERANCE:
                         test_success = False
                         logger.info("%32s WARNING: Force RMS error (%.6f kcal/mol/nm) exceeds tolerance (%.6f kcal/mol/nm).  Test failed." % ("", force_rmse/force_unit, FORCE_RMSE_TOLERANCE/force_unit))
@@ -462,8 +484,6 @@ def main():
 
         if (test_success is False):
             # Write XML files of failed tests to aid in debugging.
-            
-
             
             # Place forces into different force groups.
             forces = [ system.getForce(force_index) for force_index in range(system.getNumForces()) ]
@@ -520,15 +540,15 @@ def main():
                             potential_error = platform_potential - reference_potential
 
                             # Compute per-atom RMS (magnitude) and RMS error in force.
-                            force_unit = units.kilocalories_per_mole / units.nanometers
+                            force_unit = unit.kilocalories_per_mole / unit.nanometers
                             natoms = system.getNumParticles()
                             force_mse = (((reference_force - platform_force) / force_unit)**2).sum() / natoms * force_unit**2
-                            force_rmse = units.sqrt(force_mse)
+                            force_rmse = unit.sqrt(force_mse)
 
                             force_ms = ((platform_force / force_unit)**2).sum() / natoms * force_unit**2
-                            force_rms = units.sqrt(force_ms)
+                            force_rms = unit.sqrt(force_ms)
 
-                            logger.info("%16s%16s %16.6f kcal/mol %16.6f kcal/mol %16.6f kcal/mol/nm %16.6f kcal/mol/nm" % (platform_name, precision_model, platform_potential / units.kilocalories_per_mole, potential_error / units.kilocalories_per_mole, force_rms / force_unit, force_rmse / force_unit))
+                            logger.info("%16s%16s %16.6f kcal/mol %16.6f kcal/mol %16.6f kcal/mol/nm %16.6f kcal/mol/nm" % (platform_name, precision_model, platform_potential / unit.kilocalories_per_mole, potential_error / unit.kilocalories_per_mole, force_rms / force_unit, force_rmse / force_unit))
 
                     except Exception as e:
                         logger.info(e)
