@@ -393,6 +393,12 @@ def main():
         # Create test system instance.
         [system, positions] = [test_system, test_state.getPositions()]
 
+        # Get PME parameters
+        forces = [ system.getForce(force_index) for force_index in range(system.getNumForces()) ]
+        force_dict = { force.__class__.__name__ : force for force in forces }
+        print("PME parameters:")
+        print(force_dict['NonbondedForce'].getPMEParameters())
+
         class_name = 'RUN%d' % run
         logger.info("%s (%d atoms)" % (class_name, system.getNumParticles()))
 
@@ -462,8 +468,6 @@ def main():
 
         if (test_success is False):
             # Write XML files of failed tests to aid in debugging.
-            
-
             
             # Place forces into different force groups.
             forces = [ system.getForce(force_index) for force_index in range(system.getNumForces()) ]
