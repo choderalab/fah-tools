@@ -130,34 +130,34 @@ def optimizePME(system, integrator, positions, platform, properties, minCutoff, 
     
     # Select a length for the simulations so they will each take about 10 seconds.
     
-    print
-    print 'Selecting a length for the test simulations... '
+    print()
+    print('Selecting a length for the test simulations... ')
     nonbonded.setCutoffDistance(math.sqrt(minCutoff*maxCutoff))
     properties[cpuPmeProperty] = 'false'
-    print "Creating Context..."
+    print("Creating Context...")
     context = _createContext(system, integrator, positions, platform, properties)
     steps = 20
     time = 0.0
     while time < 8.0 or time > 12.0:
-        print "Trying %d steps..." % steps
+        print("Trying %d steps..." % steps)
         time = _timeIntegrator(context, steps)
         steps = int(steps*10.0/time)
-    print steps, 'steps'
+    print(steps, 'steps')
     
     # Run the simulations.
     
-    print
-    print 'Running simulations with standard PME'
-    print
+    print()
+    print('Running simulations with standard PME')
+    print()
     results = []
     properties[cpuPmeProperty] = 'false'
     gpuTimes = _timeWithCutoffs(system, integrator, positions, platform, properties, nonbonded, gpuCutoffs, steps)
     for time, cutoff in zip(gpuTimes, gpuCutoffs):
         results.append((time, cutoff, 'false'))
     if canUseCpuPme:
-        print
-        print 'Running simulations with CPU based PME'
-        print
+        print()
+        print('Running simulations with CPU based PME')
+        print()
         properties[cpuPmeProperty] = 'true'
         cpuTimes = _timeWithCutoffs(system, integrator, positions, platform, properties, nonbonded, cpuCutoffs, steps)
         for time, cutoff in zip(cpuTimes, cpuCutoffs):
@@ -165,9 +165,9 @@ def optimizePME(system, integrator, positions, platform, properties, minCutoff, 
     
     # Rerun the fastest configurations to make sure the results are consistent.
     
-    print
-    print 'Confirming results for best configurations'
-    print
+    print()
+    print('Confirming results for best configurations')
+    print()
     results.sort(key=lambda x: x[0])
     finalResults = []
     for time, cutoff, useCpu in results[:5]:
@@ -178,32 +178,33 @@ def optimizePME(system, integrator, positions, platform, properties, minCutoff, 
         time3 = _timeIntegrator(context, steps)
         medianTime = sorted((time, time2, time3))[1]
         finalResults.append((medianTime, cutoff, useCpu))
-        print 'Cutoff=%g, %s=%s' % (cutoff, cpuPmeProperty, useCpu)
-        print 'Times: %g, %g, %g' % (time, time2, time3)
-        print 'Median time: %g' % medianTime
-        print
-    
+        print('Cutoff=%g, %s=%s' % (cutoff, cpuPmeProperty, useCpu))
+        print('Times: %g, %g, %g' % (time, time2, time3))
+        print('Median time: %g' % medianTime)
+        print()
+        del context
+
     # Select the best configuration.
     
     finalResults.sort(key=lambda x: x[0])
     best = finalResults[0]
     nonbonded.setCutoffDistance(best[1])
     properties[cpuPmeProperty] = best[2]
-    print 'Best configuration:'
-    print
-    print 'Cutoff=%g nm, %s=%s' % (best[1], cpuPmeProperty, best[2])
-    print
+    print('Best configuration:')
+    print()
+    print('Cutoff=%g nm, %s=%s' % (best[1], cpuPmeProperty, best[2]))
+    print()
 
 
 def _createContext(system, integrator, positions, platform, properties):
-    print "copying integrator..."
+    print("copying integrator...")
     #integrator = mm.XmlSerializer.deserialize(mm.XmlSerializer.serialize(integrator))
     integrator = mm.VerletIntegrator(1.0 * unit.femtoseconds)
-    print "Creating context..."
+    print("Creating context...")
     context = mm.Context(system, integrator, platform, properties)
-    print "Setting positions..."
+    print("Setting positions...")
     context.setPositions(positions)
-    print "Done..."
+    print("Done...")
     return context
 
 
@@ -223,9 +224,19 @@ def _timeWithCutoffs(system, integrator, positions, platform, properties, nonbon
         nonbonded.setCutoffDistance(cutoff)
         context = _createContext(system, integrator, positions, platform, properties)
         time = _timeIntegrator(context, steps)
-        print 'cutoff=%g, time=%g' % (cutoff, time)
+        print('cutoff=%g, time=%g' % (cutoff, time))
         times.append(time)
         if len(times) > 3 and times[-1] > times[-2] > times[-3] > times[-4]:
             # It's steadily getting slower as we increase the cutoff, so stop now.
             break
+        del context
     return times
+
+if __name__ == '__main__':
+    import gzip
+    system = mm.XmlSerializer.deserialize(gzip.open('system.xml.gz').read().decode('utf-8'))
+    integrator = mm.XmlSerializer.deserialize(gzip.open('integrator.xml.gz').read().decode('utf-8'))
+    state = mm.XmlSerializer.deserialize(gzip.open('state0.xml.gz').read().decode('utf-8'))
+    platform = mm.Platform.getPlatformByName('OpenCL')
+    properties = {}
+    optimizePME(system, integrator, state.getPositions(), platform, properties, 0.8*unit.nanometers, 1.2*unit.nanometers)

@@ -144,7 +144,6 @@ import glob
 
 from simtk import unit, openmm
 
-from openmmtools import testsystems
 from simtk.openmm import XmlSerializer
 
 #=============================================================================================
@@ -388,10 +387,14 @@ def main():
     reference_platform = openmm.Platform.getPlatformByName("Reference")
     n_runs=get_num_runs(args.input_data_path)
     for run in range(n_runs):
+        print("Deserializing XML files for RUN%d" % run)
         state = XmlSerializer.deserialize(read_file(os.path.join(args.input_data_path,"RUN%d" % run, "state0.xml")))
         integrator = XmlSerializer.deserialize(read_file(os.path.join(args.input_data_path,"RUN%d" % run, "integrator.xml")))
         system = XmlSerializer.deserialize(read_file(os.path.join(args.input_data_path,"RUN%d" % run, "system.xml")))
         
+        # Update system periodic box vectors based on state.
+        system.setDefaultPeriodicBoxVectors(*state.getPeriodicBoxVectors())
+
         # Create test system instance.
         positions = state.getPositions()
 
@@ -411,8 +414,8 @@ def main():
                 properties['OpenCLPrecision'] = args.precision
             elif (platform.getName() == 'CUDA'):
                 properties['CudaPrecision'] = args.precision
-            minCutoff = 0.8 * unit.angstrom
-            maxCutoff = 1.2 * unit.angstrom
+            minCutoff = 0.8 * unit.nanometers
+            maxCutoff = 1.2 * unit.nanometers
             optimizePME(system, integrator, positions, platform, properties, minCutoff, maxCutoff)
 
         class_name = 'RUN%d' % run
