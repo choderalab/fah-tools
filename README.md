@@ -6,6 +6,9 @@ Tools for analyzing Folding@home logfiles
 * `extract-logs-multiprocessing.py` - multiprocessing version of pickling of logfiles
 * `analyze-logfiles.py` - analyze pickled logfiles for statistics
 * `quality_control.py` - quality control checks of SiegeTank data
+* `optimizepme.py` - PME optimization script from Peter Eastman
+* `openMM_testscript.py` - check energies across platforms
+* `benchmark.py` - draft benchmarking script
 
 ## Usage
 
