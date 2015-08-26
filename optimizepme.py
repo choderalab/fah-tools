@@ -134,10 +134,12 @@ def optimizePME(system, integrator, positions, platform, properties, minCutoff, 
     print 'Selecting a length for the test simulations... '
     nonbonded.setCutoffDistance(math.sqrt(minCutoff*maxCutoff))
     properties[cpuPmeProperty] = 'false'
+    print "Creating Context..."
     context = _createContext(system, integrator, positions, platform, properties)
     steps = 20
     time = 0.0
     while time < 8.0 or time > 12.0:
+        print "Trying %d steps..." % steps
         time = _timeIntegrator(context, steps)
         steps = int(steps*10.0/time)
     print steps, 'steps'
@@ -194,9 +196,14 @@ def optimizePME(system, integrator, positions, platform, properties, minCutoff, 
 
 
 def _createContext(system, integrator, positions, platform, properties):
-    integrator = mm.XmlSerializer.deserialize(mm.XmlSerializer.serialize(integrator))
+    print "copying integrator..."
+    #integrator = mm.XmlSerializer.deserialize(mm.XmlSerializer.serialize(integrator))
+    integrator = mm.VerletIntegrator(1.0 * unit.femtoseconds)
+    print "Creating context..."
     context = mm.Context(system, integrator, platform, properties)
+    print "Setting positions..."
     context.setPositions(positions)
+    print "Done..."
     return context
 
 
