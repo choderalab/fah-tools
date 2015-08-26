@@ -344,6 +344,56 @@ def read_file(filename):
     return contents
 
 
+def calc_pme_parameters(system):
+    """Calculate PME parameters using scheme similar to OpenMM OpenCL platform.
+    
+    Parameters
+    ----------
+    system : simtk.openmm.System
+        The system for which parameters are to be computed.
+
+    Returns
+    -------
+    alpha : float
+        The PME alpha parameter
+    nx, ny, nz : int
+        The grid numbers in each dimension
+
+    """
+
+    # Find nonbonded force.
+    forces = { system.getForce(index).__class__.__name__ : system.getForce(index) for index in range(system.getNumForces()) }
+    force = forces['NonbondedForce']
+    tol = force.getEwaldErrorTolerance()
+    boxVectors = system.getDefaultPeriodicBoxVectors()
+
+    from numpy import sqrt, log, ceil
+    from math import pow
+    alpha = (1.0/force.getCutoffDistance())*sqrt(-log(2.0*tol))
+    xsize = int(ceil(2*alpha*boxVectors[0][0]/(3*pow(tol, 0.2))))
+    ysize = int(ceil(2*alpha*boxVectors[1][1]/(3*pow(tol, 0.2))))
+    zsize = int(ceil(2*alpha*boxVectors[2][2]/(3*pow(tol, 0.2))))
+
+    print (xsize,ysize,zsize)
+    def findLegalDimension(minimum):
+        while (True):
+            # Attempt to factor the current value.
+            unfactored = minimum
+            for factor in range(2, 8):
+                while (unfactored > 1) and (unfactored%factor == 0):
+                    unfactored /= factor
+        
+            if (unfactored == 1):
+                return minimum
+
+            minimum += 1
+    
+    nx = findLegalDimension(xsize)
+    ny = findLegalDimension(ysize)
+    nz = findLegalDimension(zsize)
+
+    return (alpha, nx, ny, nz)
+
 #=============================================================================================
 # MAIN AND TESTS
 #=============================================================================================
@@ -402,7 +452,17 @@ def main():
         forces = [ system.getForce(force_index) for force_index in range(system.getNumForces()) ]
         force_dict = { force.__class__.__name__ : force for force in forces }
         print("PME parameters:")
-        print(force_dict['NonbondedForce'].getPMEParameters())
+        force = force_dict['NonbondedForce']
+        print(force.getPMEParameters())
+        (alpha, nx, ny, nz) = force.getPMEParameters()
+        if alpha == 0.0 / unit.nanometers:
+            # Set PME parameters explicitly.
+            print("Setting PME parameters explicitly...")
+            (alpha, nx, ny, nz) = calc_pme_parameters(system)
+            print (alpha, nx, ny, nz)
+            print(type(nx))
+            force.setPMEParameters(alpha, int(nx), int(ny), int(nz))
+            print(force.getPMEParameters())
 
         if args.tune_pme_platform:
             # Tune PME parameters for specified platform.
