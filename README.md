@@ -9,6 +9,7 @@ Tools for analyzing Folding@home logfiles
 * `optimizepme.py` - PME optimization script from Peter Eastman
 * `openMM_testscript.py` - check energies across platforms
 * `benchmark.py` - draft benchmarking script
+* `set-pme-parameters-in-system.py` - script to add explicit PME parameters to system.xml files lacking them
 
 ## Usage
 
