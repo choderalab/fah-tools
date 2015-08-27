@@ -35,6 +35,56 @@ import itertools
 import math
 from datetime import datetime
 
+def calc_pme_parameters(system):
+    """Calculate PME parameters using scheme similar to OpenMM OpenCL platform.
+    
+    Parameters
+    ----------
+    system : simtk.openmm.System
+        The system for which parameters are to be computed.
+
+    Returns
+    -------
+    alpha : float
+        The PME alpha parameter
+    nx, ny, nz : int
+        The grid numbers in each dimension
+
+    """
+
+    # Find nonbonded force.
+    forces = { system.getForce(index).__class__.__name__ : system.getForce(index) for index in range(system.getNumForces()) }
+    force = forces['NonbondedForce']
+    tol = force.getEwaldErrorTolerance()
+    boxVectors = system.getDefaultPeriodicBoxVectors()
+
+    from numpy import sqrt, log, ceil
+    from math import pow
+    alpha = (1.0/force.getCutoffDistance())*sqrt(-log(2.0*tol))
+    xsize = int(ceil(2*alpha*boxVectors[0][0]/(3*pow(tol, 0.2))))
+    ysize = int(ceil(2*alpha*boxVectors[1][1]/(3*pow(tol, 0.2))))
+    zsize = int(ceil(2*alpha*boxVectors[2][2]/(3*pow(tol, 0.2))))
+
+    print (xsize,ysize,zsize)
+    def findLegalDimension(minimum):
+        while (True):
+            # Attempt to factor the current value.
+            unfactored = minimum
+            for factor in range(2, 8):
+                while (unfactored > 1) and (unfactored%factor == 0):
+                    unfactored /= factor
+        
+            if (unfactored == 1):
+                return minimum
+
+            minimum += 1
+    
+    nx = findLegalDimension(xsize)
+    ny = findLegalDimension(ysize)
+    nz = findLegalDimension(zsize)
+
+    return (alpha, nx, ny, nz)
+
 def optimizePME(system, integrator, positions, platform, properties, minCutoff, maxCutoff):
     """Run a series of simulations using different parameters to see which give the best performance.
     
@@ -143,6 +193,7 @@ def optimizePME(system, integrator, positions, platform, properties, minCutoff, 
         time = _timeIntegrator(context, steps)
         steps = int(steps*10.0/time)
     print(steps, 'steps')
+    del context
     
     # Run the simulations.
     
@@ -162,7 +213,7 @@ def optimizePME(system, integrator, positions, platform, properties, minCutoff, 
         cpuTimes = _timeWithCutoffs(system, integrator, positions, platform, properties, nonbonded, cpuCutoffs, steps)
         for time, cutoff in zip(cpuTimes, cpuCutoffs):
             results.append((time, cutoff, 'true'))
-    
+
     # Rerun the fastest configurations to make sure the results are consistent.
     
     print()
@@ -174,6 +225,7 @@ def optimizePME(system, integrator, positions, platform, properties, minCutoff, 
         nonbonded.setCutoffDistance(cutoff)
         properties[cpuPmeProperty] = useCpu
         context = _createContext(system, integrator, positions, platform, properties)
+        print calc_pme_parameters(system)
         time2 = _timeIntegrator(context, steps)
         time3 = _timeIntegrator(context, steps)
         medianTime = sorted((time, time2, time3))[1]
@@ -224,19 +276,26 @@ def _timeWithCutoffs(system, integrator, positions, platform, properties, nonbon
         nonbonded.setCutoffDistance(cutoff)
         context = _createContext(system, integrator, positions, platform, properties)
         time = _timeIntegrator(context, steps)
+        del context
+        print calc_pme_parameters(system)
         print('cutoff=%g, time=%g' % (cutoff, time))
         times.append(time)
         if len(times) > 3 and times[-1] > times[-2] > times[-3] > times[-4]:
             # It's steadily getting slower as we increase the cutoff, so stop now.
             break
-        del context
+        
     return times
 
 if __name__ == '__main__':
     import gzip
-    system = mm.XmlSerializer.deserialize(gzip.open('system.xml.gz').read().decode('utf-8'))
-    integrator = mm.XmlSerializer.deserialize(gzip.open('integrator.xml.gz').read().decode('utf-8'))
-    state = mm.XmlSerializer.deserialize(gzip.open('state0.xml.gz').read().decode('utf-8'))
+    try:
+        system = mm.XmlSerializer.deserialize(gzip.open('system.xml.gz').read().decode('utf-8'))
+        integrator = mm.XmlSerializer.deserialize(gzip.open('integrator.xml.gz').read().decode('utf-8'))
+        state = mm.XmlSerializer.deserialize(gzip.open('state0.xml.gz').read().decode('utf-8'))
+    except:
+        system = mm.XmlSerializer.deserialize(gzip.open('system.xml.gz').read())
+        integrator = mm.XmlSerializer.deserialize(gzip.open('integrator.xml.gz').read())
+        state = mm.XmlSerializer.deserialize(gzip.open('state0.xml.gz').read())
     platform = mm.Platform.getPlatformByName('OpenCL')
-    properties = {}
+    properties = {'OpenCLPrecision': 'single'}
     optimizePME(system, integrator, state.getPositions(), platform, properties, 0.8*unit.nanometers, 1.2*unit.nanometers)
