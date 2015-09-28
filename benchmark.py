@@ -156,7 +156,7 @@ def compute_benchmark(statistics, benchmarks=benchmarks, Kfactor=0.75):
         if gpuname in benchmarks:
             TPP = statistics[gpuname]['TPP'] # time per percent (in days)
             PPD = benchmarks[gpuname] # expected PPD
-            timeout = 3.5 * statistics[gpuname]['TPWU'] # timeout (in days)
+            timeout = 2.5  # timeout (in days)
             deadline = timeout + 1 # deadline (in days)
             basecredit = float(PPD*1e3) / np.sqrt(Kfactor * deadline / TPP**3)
             
