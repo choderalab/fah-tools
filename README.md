@@ -18,3 +18,13 @@ Set paths in `extract-logs.py`, `extract-logs-multiprocessing.py`, `analyze-logf
 python extract-logs-multiprocessing.py
 python analyze-logfiles.py
 ```
+
+
+## Benchmark Procedure (Updated 9/29/15)
+* Login to `choderalab@csk.mskcc.org`
+* `cd fah-7.4.9-centos`
+* `rm -rf logs/ cores/ work/`
+* Edit `config.xml` to have your project key 
+* run `./FAHClient` for a few percent of the work unit 
+* run `python ./fah-tools/benchmark.py` 
+* Take points from GTX 780 
