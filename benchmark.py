@@ -126,6 +126,7 @@ def parse_logfile(filename, verbose=False):
 
 benchmarks = { 
     'GeForce GTX 780' : 175000, # GTX-780 should get 175000 PPD
+    'GeForce GTX 980' : 350000, # GTX-980 should get 350000 PPD
     }
 
 
@@ -156,9 +157,9 @@ def compute_benchmark(statistics, benchmarks=benchmarks, Kfactor=0.75):
         if gpuname in benchmarks:
             TPP = statistics[gpuname]['TPP'] # time per percent (in days)
             PPD = benchmarks[gpuname] # expected PPD
-            timeout = 2.5  # timeout (in days)
+            timeout = 7  # timeout (in days)
             #deadline = timeout + 1 # deadline (in days)
-            deadline = 14 # deadline (in days)
+            deadline = 10 # deadline (in days)
             basecredit = float(PPD*1e3) / np.sqrt(Kfactor * deadline / TPP**3)
             
             statistics[gpuname]['timeout'] = timeout
