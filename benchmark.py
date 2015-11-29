@@ -58,11 +58,16 @@ def parse_logfile(filename, verbose=False):
     # Parse logfile.
     gpuname_in_slot = dict() # gpuname_in_slot[slot] is the name of the GPU in slot `slot`
     events = dict() # events[gpuname] is a list of all percent-completed reports, in seconds since start of log
+    ansi_escape = re.compile(r'\x1b[^m]*m')
     for line in lines[1:]:
+        # Strip ANSI color codes
+        line = ansi_escape.sub('', line)
+
         # Split into timestamp and message
         timestamp, message = line[0:8], line[9:]
         # Convert into struct_time.
         hour, min, sec = re.split(':',timestamp)
+
         # Compute elapsed time (in seconds) since log start.
         elapsed_seconds = datetime.timedelta(seconds=float(sec)-logstart_struct_time.tm_sec, 
                                              minutes=float(min)-logstart_struct_time.tm_min, 
