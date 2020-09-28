@@ -7,11 +7,11 @@ Automated benchmarking of Folding@home projects
 
 import time
 import datetime
-import copy
 import re
 import numpy as np
+import argparse
 
-projectid = 10490 # project number to benchmark
+#projectid = 10490 # project number to benchmark
 log_filename = "log.txt" # log file to process
 
 def parse_logfile(filename, verbose=False):
@@ -37,7 +37,7 @@ def parse_logfile(filename, verbose=False):
         statistics[gpuname]['TPWUstd'] is standard deviation of the time per work unit, in days        
         
     """
-    if verbose: print "Reading log file '%s'..." % filename
+    if verbose: print("Reading log file '%s'..." % filename)
 
     # CONSTANTS
     SECONDS_PER_DAY = float(24*60*60) # number of seconds in a day
@@ -63,10 +63,19 @@ def parse_logfile(filename, verbose=False):
         # Strip ANSI color codes
         line = ansi_escape.sub('', line)
 
+        # Skip other lines
+        if line[0] == '*':
+            continue
+
         # Split into timestamp and message
         timestamp, message = line[0:8], line[9:]
+
         # Convert into struct_time.
-        hour, min, sec = re.split(':',timestamp)
+        try:
+            hour, min, sec = re.split(':', timestamp)
+        except Exception as e:
+            print(line)
+            continue
 
         # Compute elapsed time (in seconds) since log start.
         elapsed_seconds = datetime.timedelta(seconds=float(sec)-logstart_struct_time.tm_sec, 
@@ -84,7 +93,7 @@ def parse_logfile(filename, verbose=False):
         result = re.match("^Enabled folding slot (\d+): READY gpu:\d:\S+ \[(.+)\]$", message)
         if result is not None:
             slot, gpuname = result.groups()
-            if verbose: print "Found GPU '%s' in folding slot %s" % (gpuname, slot)
+            if verbose: print("Found GPU '%s' in folding slot %s" % (gpuname, slot))
             gpuname_in_slot[slot] = gpuname
 
         # Find reported percentages
@@ -99,12 +108,12 @@ def parse_logfile(filename, verbose=False):
                 events[gpuname] = [elapsed_seconds]
 
     # Extract GPU names.
-    slots = gpuname_in_slot.keys()
+    slots = list(gpuname_in_slot.keys())
     gpunames = [ gpuname_in_slot[slot] for slot in slots ]
 
     if verbose:
         for gpuname in gpunames:
-            print "%-20s: completed %d%%" % (gpuname, len(events[gpuname])-1)
+            print("%-20s: completed %d%%" % (gpuname, len(events[gpuname])-1))
 
     # Compute time per percent samples for each GPU
     percent_completed_timings = dict() # percent_completed_timings[gpuname] is a numpy array of all timing statistics for 1%
@@ -129,13 +138,15 @@ def parse_logfile(filename, verbose=False):
 # REFERENCE BENCHMARK CARDS
 #
 
-benchmarks = { 
-    'GeForce GTX 780' : 175000, # GTX-780 should get 175000 PPD
-    'GeForce GTX 980' : 350000, # GTX-980 should get 350000 PPD
+benchmarks = {
+    'GeForce GTX 780' : 200000,
+    'GeForce GTX 980' : 490000,
+    'GeForce GTX 1080': 920000,
+    'GeForce GTX 1080 Ti': 1340000
     }
 
 
-def compute_benchmark(statistics, benchmarks=benchmarks, Kfactor=0.75):
+def compute_benchmark(statistics, timeout, deadline, benchmarks=benchmarks, Kfactor=0.75):
     """
     Apply benchmarks using recommended PPD for a given set of cards.
     
@@ -143,6 +154,10 @@ def compute_benchmark(statistics, benchmarks=benchmarks, Kfactor=0.75):
     ----------
     statistics : dict of dict
         statistics[gpuname] a dict of timing statistics (in days) for the given GPU.
+    timeout : int
+        in days, if the client returns a WU before this number of days, bonus points are awarded to the client.
+    deadline : int
+        in days, if the client fails to return a WU before this number of days, no points are awarded.
     benchmarks : dict of float
         benchmarks[gpuname] is the expected PPD for a given fixed benchmark card
     Kfactor : float, optional, default=0.75
@@ -157,16 +172,16 @@ def compute_benchmark(statistics, benchmarks=benchmarks, Kfactor=0.75):
         statistics[gpuname]['deadline'] is the deadline (in days)
 
     """
-
-    for gpuname in statistics.keys():
+    print(statistics.keys())
+    for gpuname in list(statistics.keys()):
         if gpuname in benchmarks:
             TPP = statistics[gpuname]['TPP'] # time per percent (in days)
             PPD = benchmarks[gpuname] # expected PPD
-            timeout = 7  # timeout (in days)
+            timeout = timeout  # timeout (in days)
             #deadline = timeout + 1 # deadline (in days)
-            deadline = 10 # deadline (in days)
+            deadline = deadline # deadline (in days)
             basecredit = float(PPD*1e3) / np.sqrt(Kfactor * deadline / TPP**3)
-            
+
             statistics[gpuname]['timeout'] = timeout
             statistics[gpuname]['deadline'] = deadline
             statistics[gpuname]['basecredit'] = basecredit
@@ -175,19 +190,25 @@ def compute_benchmark(statistics, benchmarks=benchmarks, Kfactor=0.75):
 
 
 if __name__ == '__main__':
+    # Read args
+    parser = argparse.ArgumentParser(description='benchmark for fah')
+    parser.add_argument('-timeout', type=int, default=2, help='in days')
+    parser.add_argument('-deadline', type=int, default=3, help='in days')
+    args = parser.parse_args()
+
     # Parse the log file.
     (gpunames, statistics) = parse_logfile(log_filename, verbose=True)
 
     # Compute benchmarks
-    statistics = compute_benchmark(statistics)
+    statistics = compute_benchmark(statistics, args.timeout, args.deadline)
 
-    print ""
-    print "BENCHMARK RESULTS"
+    print("")
+    print("BENCHMARK RESULTS")
     for gpuname in gpunames:
         if 'basecredit' in statistics[gpuname]:
-            print "%-20s | %10.8f days/WU | timeout %8.6f deadline %8.6f credit %8f" % (gpuname, statistics[gpuname]['TPWU'], statistics[gpuname]['timeout'], statistics[gpuname]['deadline'], statistics[gpuname]['basecredit'])
+            print("%-20s | %10.8f days/WU | timeout %8.6f deadline %8.6f credit %8f" % (gpuname, statistics[gpuname]['TPWU'], statistics[gpuname]['timeout'], statistics[gpuname]['deadline'], statistics[gpuname]['basecredit']))
         else:
-            print "%-20s | %10.8f days/WU" % (gpuname, statistics[gpuname]['TPWU'])
-    print ""
+            print("%-20s | %10.8f days/WU" % (gpuname, statistics[gpuname]['TPWU']))
+    print("")
 
 
