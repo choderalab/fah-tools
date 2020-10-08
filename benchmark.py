@@ -90,7 +90,7 @@ def parse_logfile(filename, verbose=False):
 
         # Find GPU definitions
         # 17:59:19:Enabled folding slot 00: READY gpu:0:GK110 [GeForce GTX 780]
-        result = re.match("^Enabled folding slot (\d+): READY gpu:\d:\S+ \[(.+)\]$", message)
+        result = re.match("^Enabled folding slot (\d+): READY gpu:\d:\S+ \[(.+)\]", message)
         if result is not None:
             slot, gpuname = result.groups()
             if verbose: print("Found GPU '%s' in folding slot %s" % (gpuname, slot))
